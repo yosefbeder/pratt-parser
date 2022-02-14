@@ -9,6 +9,16 @@ const isBinaryOperator = (type: TokenType) =>
 		TokenType.CARET,
 	].includes(type);
 
+const getPrefixBP = (type: TokenType): [null, number] => {
+	switch (type) {
+		case TokenType.PLUS:
+		case TokenType.MINUS:
+			return [null, 5];
+		default:
+			throw new Error('Bad operator');
+	}
+};
+
 const getInfixBP = (type: TokenType): [number, number] => {
 	switch (type) {
 		case TokenType.PLUS:
@@ -53,6 +63,21 @@ class NumberExpr extends Expr {
 
 	toString() {
 		return this.token.lexeme;
+	}
+}
+
+class UnaryExpr extends Expr {
+	operator: Token;
+	operand: Expr;
+
+	constructor(operator: Token, operand: Expr) {
+		super();
+		this.operator = operator;
+		this.operand = operand;
+	}
+
+	toString() {
+		return `(${this.operator.lexeme} ${this.operand.toString()})`;
 	}
 }
 
@@ -115,6 +140,13 @@ export class Parser {
 				break;
 			case TokenType.NUMBER:
 				lhs = new NumberExpr(token);
+				break;
+			case TokenType.PLUS:
+			case TokenType.MINUS:
+				const [_, rightBP] = getPrefixBP(token.type);
+				const rhs = this.parse(rightBP);
+
+				lhs = new UnaryExpr(token, rhs);
 				break;
 			default:
 				throw new Error('Bad token');
