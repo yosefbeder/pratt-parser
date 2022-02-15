@@ -103,10 +103,12 @@ class BinaryExpr extends Expr {
 export class Parser {
 	tokens: Token[];
 	current: number;
+	parenDepth: number;
 
 	constructor(tokens: Token[]) {
 		this.tokens = tokens;
 		this.current = 0;
+		this.parenDepth = 0;
 	}
 
 	atEnd() {
@@ -149,11 +151,13 @@ export class Parser {
 				lhs = new UnaryExpr(token, rhs);
 				break;
 			case TokenType.LEFT_PAREN:
+				this.parenDepth++;
 				lhs = this.parse(0);
 
 				if (!this.match(TokenType.RIGHT_PAREN)) {
 					throw new Error('Unterminated group');
 				}
+				this.parenDepth--;
 
 				break;
 			default:
@@ -187,7 +191,8 @@ export class Parser {
 				lhs = new BinaryExpr(operator, lhs, rhs);
 				continue;
 			} catch (error) {
-				if (operator.type === TokenType.RIGHT_PAREN) break;
+				if (operator.type === TokenType.RIGHT_PAREN && this.parenDepth > 0)
+					break;
 
 				throw error;
 			}
