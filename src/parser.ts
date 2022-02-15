@@ -5,7 +5,7 @@ const getPostfixBP = (type: TokenType): [number, null] => {
 		case TokenType.BANG:
 			return [6, null];
 		default:
-			throw new Error('Bad operator');
+			throw new Error(`Bad operator ${type}`);
 	}
 };
 
@@ -15,7 +15,7 @@ const getPrefixBP = (type: TokenType): [null, number] => {
 		case TokenType.MINUS:
 			return [null, 5];
 		default:
-			throw new Error('Bad operator');
+			throw new Error(`Bad operator ${type}`);
 	}
 };
 
@@ -30,7 +30,7 @@ const getInfixBP = (type: TokenType): [number, number] => {
 		case TokenType.CARET:
 			return [8, 7];
 		default:
-			throw new Error('Bad operator');
+			throw new Error(`Bad operator ${type}`);
 	}
 };
 
@@ -122,7 +122,7 @@ export class Parser {
 	}
 
 	match(type: TokenType) {
-		if (this.peek().type === type) {
+		if (this.peek() && this.peek().type === type) {
 			this.next();
 			return true;
 		}
@@ -148,6 +148,14 @@ export class Parser {
 
 				lhs = new UnaryExpr(token, rhs);
 				break;
+			case TokenType.LEFT_PAREN:
+				lhs = this.parse(0);
+
+				if (!this.match(TokenType.RIGHT_PAREN)) {
+					throw new Error('Unterminated group');
+				}
+
+				break;
 			default:
 				throw new Error('Bad token');
 		}
@@ -163,7 +171,11 @@ export class Parser {
 				this.next();
 
 				lhs = new UnaryExpr(operator, lhs);
-			} catch (_) {
+
+				continue;
+			} catch (_) {}
+
+			try {
 				const [leftBP, rightBP] = getInfixBP(operator.type);
 
 				if (minBP > leftBP) break;
@@ -173,6 +185,11 @@ export class Parser {
 				const rhs = this.parse(rightBP);
 
 				lhs = new BinaryExpr(operator, lhs, rhs);
+				continue;
+			} catch (error) {
+				if (operator.type === TokenType.RIGHT_PAREN) break;
+
+				throw error;
 			}
 		}
 
