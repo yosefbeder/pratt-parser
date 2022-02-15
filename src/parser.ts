@@ -3,6 +3,7 @@ import { Token, TokenType } from './scanner';
 const getPostfixBP = (type: TokenType): [number, null] => {
 	switch (type) {
 		case TokenType.BANG:
+		case TokenType.LEFT_BRACE:
 			return [6, null];
 		default:
 			throw new Error(`Bad operator ${type}`);
@@ -104,11 +105,13 @@ export class Parser {
 	tokens: Token[];
 	current: number;
 	parenDepth: number;
+	braceDepth: number;
 
 	constructor(tokens: Token[]) {
 		this.tokens = tokens;
 		this.current = 0;
 		this.parenDepth = 0;
+		this.braceDepth = 0;
 	}
 
 	atEnd() {
@@ -174,10 +177,24 @@ export class Parser {
 
 				this.next();
 
-				lhs = new UnaryExpr(operator, lhs);
+				if (operator.type === TokenType.BANG) {
+					lhs = new UnaryExpr(operator, lhs);
+				} else if (operator.type === TokenType.LEFT_BRACE) {
+					this.braceDepth++;
+					const rhs = this.parse(0);
+
+					if (!this.match(TokenType.RIGHT_BRACE)) {
+						throw new Error('Unterminated array retrieval');
+					}
+					this.braceDepth--;
+
+					lhs = new BinaryExpr(operator, lhs, rhs);
+				}
 
 				continue;
-			} catch (_) {}
+			} catch (error) {
+				if (operator.type === TokenType.LEFT_BRACE) throw error;
+			}
 
 			try {
 				const [leftBP, rightBP] = getInfixBP(operator.type);
@@ -191,10 +208,10 @@ export class Parser {
 				lhs = new BinaryExpr(operator, lhs, rhs);
 				continue;
 			} catch (error) {
-				if (operator.type === TokenType.RIGHT_PAREN && this.parenDepth > 0)
+				if (operator.type === TokenType.RIGHT_PAREN && this.parenDepth) break;
+				else if (operator.type === TokenType.RIGHT_BRACE && this.braceDepth)
 					break;
-
-				throw error;
+				else throw error;
 			}
 		}
 
