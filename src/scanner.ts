@@ -13,6 +13,8 @@ export enum TokenType {
 	BANG,
 	LEFT_PAREN,
 	RIGHT_PAREN,
+	LEFT_BRACE,
+	RIGHT_BRACE,
 	QUESTION_MARK,
 	COLON,
 }
@@ -91,6 +93,10 @@ export class Scanner {
 				tokens.push(this.popToken(TokenType.LEFT_PAREN));
 			} else if (this.match(')')) {
 				tokens.push(this.popToken(TokenType.RIGHT_PAREN));
+			} else if (this.match('[')) {
+				tokens.push(this.popToken(TokenType.LEFT_BRACE));
+			} else if (this.match(']')) {
+				tokens.push(this.popToken(TokenType.RIGHT_BRACE));
 			} else if (this.match('?')) {
 				tokens.push(this.popToken(TokenType.QUESTION_MARK));
 			} else if (this.match(':')) {
