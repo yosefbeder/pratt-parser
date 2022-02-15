@@ -2,6 +2,8 @@ const isSpace = (character: string) => /\s/.test(character);
 
 const isDigit = (character: string) => /[0-9]/.test(character);
 
+const isAlphabet = (character: string) => /[a-z]|[A-Z]|\_/.test(character);
+
 export enum TokenType {
 	NUMBER,
 	IDENTIFIER,
@@ -107,6 +109,12 @@ export class Scanner {
 				while (isDigit(this.peek())) this.next();
 
 				tokens.push(this.popToken(TokenType.NUMBER));
+			} else if (isAlphabet(this.peek())) {
+				this.next();
+
+				while (isAlphabet(this.peek()) || isDigit(this.peek())) this.next();
+
+				tokens.push(this.popToken(TokenType.IDENTIFIER));
 			} else {
 				throw new Error(`Unexpected character ${this.peek()}`);
 			}
