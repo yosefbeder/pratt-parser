@@ -107,6 +107,8 @@ export class Scanner {
 				while (isDigit(this.peek())) this.next();
 
 				tokens.push(this.popToken(TokenType.NUMBER));
+			} else {
+				throw new Error(`Unexpected character ${this.peek()}`);
 			}
 		}
 
