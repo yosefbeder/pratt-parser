@@ -4,7 +4,7 @@ const getPostfixBP = (type: TokenType): [number, null] => {
 	switch (type) {
 		case TokenType.BANG:
 		case TokenType.LEFT_BRACE:
-			return [6, null];
+			return [8, null];
 		default:
 			throw new Error(`Bad operator ${type}`);
 	}
@@ -14,7 +14,7 @@ const getPrefixBP = (type: TokenType): [null, number] => {
 	switch (type) {
 		case TokenType.PLUS:
 		case TokenType.MINUS:
-			return [null, 5];
+			return [null, 7];
 		default:
 			throw new Error(`Bad operator ${type}`);
 	}
@@ -22,14 +22,16 @@ const getPrefixBP = (type: TokenType): [null, number] => {
 
 const getInfixBP = (type: TokenType): [number, number] => {
 	switch (type) {
+		case TokenType.QUESTION_MARK:
+			return [2, 1];
 		case TokenType.PLUS:
 		case TokenType.MINUS:
-			return [1, 2];
+			return [3, 4];
 		case TokenType.STAR:
 		case TokenType.SLASH:
-			return [3, 4];
+			return [5, 6];
 		case TokenType.CARET:
-			return [8, 7];
+			return [10, 9];
 		default:
 			throw new Error(`Bad operator ${type}`);
 	}
@@ -101,17 +103,45 @@ class BinaryExpr extends Expr {
 	}
 }
 
+class TernaryExpr extends Expr {
+	operator: Token;
+	condition: Expr;
+	thenBranch: Expr;
+	elseBranch: Expr;
+
+	constructor(
+		operator: Token,
+		condition: Expr,
+		thenBranch: Expr,
+		elseBranch: Expr,
+	) {
+		super();
+		this.operator = operator;
+		this.condition = condition;
+		this.thenBranch = thenBranch;
+		this.elseBranch = elseBranch;
+	}
+
+	toString() {
+		return `(${
+			this.operator.lexeme
+		} ${this.condition.toString()} ${this.thenBranch.toString()} ${this.elseBranch.toString()})`;
+	}
+}
+
 export class Parser {
 	tokens: Token[];
 	current: number;
 	parenDepth: number;
 	braceDepth: number;
+	conditionDepth: number;
 
 	constructor(tokens: Token[]) {
 		this.tokens = tokens;
 		this.current = 0;
 		this.parenDepth = 0;
 		this.braceDepth = 0;
+		this.conditionDepth = 0;
 	}
 
 	atEnd() {
@@ -189,6 +219,18 @@ export class Parser {
 					this.braceDepth--;
 
 					lhs = new BinaryExpr(operator, lhs, rhs);
+				} else if (operator.type === TokenType.QUESTION_MARK) {
+					this.conditionDepth++;
+					const thenBranch = this.parse(0);
+
+					if (!this.match(TokenType.COLON)) {
+						throw new Error('Unterminated array retrieval');
+					}
+
+					const elseBranch = this.parse(0);
+					this.conditionDepth--;
+
+					lhs = new TernaryExpr(operator, lhs, thenBranch, elseBranch);
 				}
 
 				continue;
@@ -203,13 +245,27 @@ export class Parser {
 
 				this.next();
 
-				const rhs = this.parse(rightBP);
+				if (operator.type === TokenType.QUESTION_MARK) {
+					const mhs = this.parse(0);
 
-				lhs = new BinaryExpr(operator, lhs, rhs);
+					if (!this.match(TokenType.COLON)) {
+						throw new Error('Expected a colon after the then expression');
+					}
+
+					const rhs = this.parse(rightBP);
+
+					lhs = new TernaryExpr(operator, lhs, mhs, rhs);
+				} else {
+					const rhs = this.parse(rightBP);
+
+					lhs = new BinaryExpr(operator, lhs, rhs);
+				}
 				continue;
 			} catch (error) {
 				if (operator.type === TokenType.RIGHT_PAREN && this.parenDepth) break;
 				else if (operator.type === TokenType.RIGHT_BRACE && this.braceDepth)
+					break;
+				else if (operator.type === TokenType.COLON && this.conditionDepth)
 					break;
 				else throw error;
 			}
