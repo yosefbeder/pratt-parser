@@ -10,6 +10,7 @@ export enum TokenType {
 	STAR,
 	SLASH,
 	CARET,
+	BANG,
 	QUESTION_MARK,
 	COLON,
 }
@@ -82,6 +83,8 @@ export class Scanner {
 				tokens.push(this.popToken(TokenType.SLASH));
 			} else if (this.match('^')) {
 				tokens.push(this.popToken(TokenType.CARET));
+			} else if (this.match('!')) {
+				tokens.push(this.popToken(TokenType.BANG));
 			} else if (this.match('?')) {
 				tokens.push(this.popToken(TokenType.QUESTION_MARK));
 			} else if (this.match(':')) {
