@@ -1,13 +1,13 @@
 import { Token, TokenType } from './scanner';
 
-const isBinaryOperator = (type: TokenType) =>
-	[
-		TokenType.PLUS,
-		TokenType.MINUS,
-		TokenType.STAR,
-		TokenType.SLASH,
-		TokenType.CARET,
-	].includes(type);
+const getPostfixBP = (type: TokenType): [number, null] => {
+	switch (type) {
+		case TokenType.BANG:
+			return [6, null];
+		default:
+			throw new Error('Bad operator');
+	}
+};
 
 const getPrefixBP = (type: TokenType): [null, number] => {
 	switch (type) {
@@ -34,7 +34,7 @@ const getInfixBP = (type: TokenType): [number, number] => {
 	}
 };
 
-class Expr {
+abstract class Expr {
 	toString() {
 		return '';
 	}
@@ -155,19 +155,25 @@ export class Parser {
 		while (this.peek()) {
 			let operator = this.peek();
 
-			if (!isBinaryOperator(operator.type)) {
-				throw new Error('Bad token');
+			try {
+				const [leftBP, _] = getPostfixBP(operator.type);
+
+				if (minBP > leftBP) break;
+
+				this.next();
+
+				lhs = new UnaryExpr(operator, lhs);
+			} catch (_) {
+				const [leftBP, rightBP] = getInfixBP(operator.type);
+
+				if (minBP > leftBP) break;
+
+				this.next();
+
+				const rhs = this.parse(rightBP);
+
+				lhs = new BinaryExpr(operator, lhs, rhs);
 			}
-
-			const [leftBP, rightBP] = getInfixBP(operator.type);
-
-			if (minBP > leftBP) break;
-
-			this.next();
-
-			const rhs = this.parse(rightBP);
-
-			lhs = new BinaryExpr(operator, lhs, rhs);
 		}
 
 		return lhs;
